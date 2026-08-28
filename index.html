@@ -1031,6 +1031,9 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   /* grid 改單欄 */
   .grid-3 { grid-template-columns: 1fr; gap: 12px; }
   .grid-2 { grid-template-columns: 1fr; gap: 12px; }
+  /* 手機：格線子項允許縮到欄寬，避免整頁被撐出橫向捲軸 */
+  .grid-2 > *, .grid-3 > * { min-width: 0; }
+  .leg-time { white-space: normal; }
 
   /* 字體再放大 */
   .section-title { font-size: 32px; padding-left: 12px; }
