@@ -1,20 +1,62 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<script>
+/* ============================================================
+   GitHub Pages 版相容層（2026-10-10 重做：內容＝Apps Script 正式版查詢頁 index.html 原樣，只多這一段）
+   把 google.script.run.xxx() 轉成 JSONP 呼叫 Apps Script；google.script.url 讀這個網址的 ?k=
+   為什麼要 GitHub 版：Apps Script 網頁包在跨網域 iframe 裡，有些 App 內建瀏覽器會擋 → 一片空白。
+   正式版改了之後，要重新產生這一頁再 push（見 README）。
+   ============================================================ */
+var API_URL = "https://script.google.com/macros/s/AKfycbwlWbZzxvpgdG6CU9LS4bczYSzgpM9cxd8-CJWTbKtxJvFM3nX05Dk_5NrAaE2gK7SN/exec";
+function jsonp_(params, onOk, onErr) {
+  var cbName = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+  var script = document.createElement("script"), done = false;
+  function cleanup() { try { delete window[cbName]; } catch (e) { window[cbName] = undefined; } if (script.parentNode) script.parentNode.removeChild(script); }
+  window[cbName] = function (data) { if (done) return; done = true; cleanup(); onOk(data); };
+  script.onerror = function () { if (done) return; done = true; cleanup(); onErr({ message: "連線失敗，請檢查網路後再試一次" }); };
+  setTimeout(function () { if (done) return; done = true; cleanup(); onErr({ message: "連線逾時，請稍後再試" }); }, 20000);
+  var qs = [];
+  for (var k in params) { if (params[k] === undefined || params[k] === null) continue; qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k])); }
+  qs.push("callback=" + cbName);
+  script.src = API_URL + "?" + qs.join("&");
+  (document.body || document.documentElement).appendChild(script);
+}
+var google = { script: {} };
+Object.defineProperty(google.script, "run", {
+  get: function () {
+    var okCb = null, errCb = null;
+    function send(params) { jsonp_(params, function (data) { if (okCb) okCb(data); }, function (err) { if (errCb) errCb(err); }); }
+    var api = {
+      withSuccessHandler: function (f) { okCb = f; return api; },
+      withFailureHandler: function (f) { errCb = f; return api; },
+      searchName:          function (name) { send({ action: "search", name: name }); },
+      searchKey:           function (k)    { send({ action: "searchKey", k: k }); },
+      getProgressInfo:     function ()     { send({ action: "progress" }); },
+      confirmUser:         function (n, d, r)    { send({ action: "confirm", name: n, days: d, roommates: r }); },
+      saveMessage:         function (n, d, r, m) { send({ action: "message", name: n, days: d, roommates: r, message: m }); },
+      findIncompleteRooms: function (f)    { send({ action: "rooms", daysFilter: f || "" }); }
+    };
+    return api;
+  }
+});
+google.script.url = { getLocation: function (cb) {
+  var p = {}, ps = {};
+  (location.search || "").replace(/^\?/, "").split("&").forEach(function (kv) { if (!kv) return; var i = kv.indexOf("="); var k = decodeURIComponent(i < 0 ? kv : kv.slice(0, i)), v = i < 0 ? "" : decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); p[k] = v; (ps[k] = ps[k] || []).push(v); });
+  setTimeout(function () { cb({ parameter: p, parameters: ps, hash: (location.hash || "").replace(/^#/, "") }); }, 0);
+} };
+</script>
+  <base target="_top">
   <meta charset="UTF-8">
-  <title>虛空無極殿 2026 花蓮宜蘭行程查詢</title>
-  <meta name="description" content="2026/10/17-19 花蓮宜蘭活動：查詢您的車票、住宿與繳費資訊">
-  <meta name="theme-color" content="#0f80ad">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%86%3C/text%3E%3C/svg%3E">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi&#43;Maru&amp;family=Noto&#43;Sans&#43;TC:wght@400;500;700;900&amp;family=Noto&#43;Serif&#43;TC:wght@500;700;900&amp;display=swap" rel="stylesheet">
 
   <style>
 
-/* ============================================================ */
-/* 共用                                                          */
-/* ============================================================ */
+ 
+ 
+ 
 body {
   margin: 0;
   font-family: "Kiwi Maru", "Noto Sans TC", Arial, sans-serif;
@@ -108,7 +150,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 
 .confirm-btn { background: #0f766e; margin-top: 18px; }
 
-/* 查詢缺人房間按鈕 */
+ 
 .rooms-btn {
   width: 100%;
   padding: 18px;
@@ -125,7 +167,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 }
 .rooms-btn:hover { background: #95592e; }
 
-/* 首頁進度公告大方塊 */
+ 
 .progress-box {
   background: linear-gradient(135deg, #fff7e6 0%, #ffe9c7 100%);
   border: 3px solid #e6a23c;
@@ -175,7 +217,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   .progress-box .p-stat .num { font-size: 26px; }
 }
 
-/* 缺人房間 — 每個房間一張卡片 */
+ 
 .room-incomplete {
   background: rgba(255,255,255,0.7);
   border-radius: 14px;
@@ -202,7 +244,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   margin-top: 6px;
 }
 
-/* 三層導覽：飯店列表 / 房型列表 / 返回按鈕 */
+ 
 .hotel-btn, .roomtype-btn {
   width: 100%;
   padding: 18px 20px;
@@ -259,7 +301,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 }
 .back-btn:hover { color: #5b351b; text-decoration: underline; }
 
-/* 留言摺疊按鈕（淡灰，預設不顯眼） */
+ 
 .msg-toggle-btn {
   background: #e8d4b8;
   color: #5b351b;
@@ -270,7 +312,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 }
 .msg-toggle-btn:hover { background: #d7c0a8; }
 
-/* 大確認按鈕（主要動作，醒目） */
+ 
 .big-confirm-btn {
   width: 100%;
   padding: 32px;
@@ -290,7 +332,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 .big-confirm-btn:hover { transform: translateY(-2px); }
 .big-confirm-btn:disabled { background: #b8b8b8; box-shadow: none; transform: none; }
 
-/* 已確認狀態顯示 */
+ 
 .confirm-done {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   color: #065f46;
@@ -323,7 +365,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   font-style: italic;
 }
 
-/* 目前狀態 chip */
+ 
 .status-chip {
   display: inline-block;
   background: #fff3cd;
@@ -349,7 +391,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 }
 .card:last-child { margin-bottom: 120px; }
 
-/* 三天兩夜 = 淺藍 / 兩天一夜 = 淺黃 整張卡片底色 */
+ 
 .card.blue { background: #dbeafe; }
 .card.yellow { background: #fef9c3; }
 
@@ -371,8 +413,30 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   padding-left: 10px;
   border-left: 5px solid #8b542f;
 }
+ 
+.predep { display: block; margin: 4px 0 18px; padding: 16px 18px; background: #8b542f; color: #fff; border-radius: 18px; text-decoration: none; box-shadow: 0 3px 10px rgba(91,53,27,.28); }
+.predep:active { transform: translateY(1px); }
+.predep .pd-t { display: block; font-size: 24px; font-weight: 900; letter-spacing: 1px; }
+.predep .pd-s { display: block; font-size: 16px; line-height: 1.5; margin-top: 6px; opacity: .92; }
+.predep .pd-go { display: block; margin-top: 12px; padding: 10px; background: #fff; color: #8b542f; border-radius: 999px; text-align: center; font-size: 20px; font-weight: 900; }
+ 
+details.fold > summary { list-style: none; cursor: pointer; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after {
+  content: "+"; display: inline-block; margin-left: 10px; vertical-align: middle;
+  width: 1.4em; height: 1.4em; line-height: 1.4em; text-align: center;
+  border-radius: 50%; background: #8b542f; color: #fff; font-size: 0.85em;
+}
+details.fold[open] > summary::after { content: "−"; }
+ 
+.brunch-line { max-width: 540px; margin: 12px auto; background: #fff8ea; border: 2px solid #e0b84a; border-radius: 16px; padding: 14px 16px; text-align: center; }
+.brunch-line .bl-t { font-size: 18px; font-weight: 800; color: #7a5a3a; }
+.brunch-line .bl-v { font-size: 26px; font-weight: 900; color: #1c7c3a; margin: 4px 0; }
+.brunch-line .bl-n { font-size: 16px; color: #6b6f86; }
+.brunch-line .bl-a { display: inline-block; margin-top: 8px; font-size: 18px; font-weight: 800; color: #fff; background: #8b542f; border-radius: 999px; padding: 6px 18px; text-decoration: none; }
 
-/* 天數分組標題 */
+
+ 
 .day-header {
   font-size: 24px;
   font-weight: 900;
@@ -386,8 +450,8 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   box-shadow: 0 4px 12px rgba(91,53,27,0.25);
 }
 
-/* 接駁車卡片（遊覽車護照風）*/
-/* 成發遊覽車風：黃車身 + 橘漩渦花紋 + 藍 logo */
+ 
+ 
 .shuttle-ticket {
   position: relative;
   box-sizing: border-box;
@@ -402,13 +466,13 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   display: flex; flex-direction: column;
   font-family: "Noto Sans TC", Arial, sans-serif;
 }
-/* 橘色漩渦花紋（左下 + 右下，仿車身彩繪）*/
+ 
 .shuttle-ticket .swirl {
   position: absolute; bottom: -10px; left: 0; right: 0;
   width: 100%; height: 60%;
   z-index: 1; pointer-events: none; opacity: 0.9;
 }
-/* Q 版遊覽車底圖（右下角，半透明）*/
+ 
 .shuttle-ticket .bus-img {
   position: absolute; right: 14px; bottom: 12px;
   width: 130px; height: auto;
@@ -441,6 +505,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 @media (max-width: 560px) {
   .shuttle-ticket { aspect-ratio: auto; }
   .shuttle-ticket .st-bus { font-size: 30px; }
+  .shuttle-ticket .st-route { font-size: 16px; white-space: nowrap; max-width: 100%; box-sizing: border-box; overflow: hidden; }    
 }
 
 .info-block {
@@ -462,18 +527,18 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 .label { font-size: 18px; font-weight: bold; color: #7a4b1f; margin-bottom: 6px; }
 .value {
   font-size: 24px; font-weight: bold; line-height: 1.4;
-  white-space: nowrap;          /* 不換行 */
+  white-space: nowrap;           
   overflow: hidden;
   text-overflow: ellipsis;
   background: rgba(255,255,255,0.85); border-radius: 12px; padding: 10px;
   font-family: "Noto Sans TC", Arial, sans-serif;
 }
 
-/* 站名底下的車次 / 時間（吃「車次時刻表」分頁） */
-/* 每一段車 = 一張獨立小卡，第1段 / 第2段 一眼分得出來 */
+ 
+ 
 .train-info { margin-top: 12px; }
 
-/* 實心色塊 + 陰影浮起 */
+ 
 .leg {
   background: #7a8796;
   color: #ffffff;
@@ -485,7 +550,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
 }
 .leg:first-child { margin-top: 0; }
 
-/* 段號：獨立一行、靠左上角 */
+ 
 .leg-badge-row { text-align: left; margin-bottom: 7px; }
 .leg-badge {
   display: inline-block;
@@ -515,7 +580,7 @@ button:disabled { background: #b8b8b8; cursor: not-allowed; box-shadow: none; }
   border-radius: 999px; padding: 4px 14px;
 }
 
-/* 車種配色（實心色塊）：台鐵藍 / 高鐵橘 / 遊覽車黃 */
+ 
 .leg.tra { background: #2f6fae; }
 .leg.tra .leg-badge { color: #1f4e79; }
 .leg.hsr { background: #d2691e; }
@@ -641,9 +706,9 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   box-shadow: 0 4px 10px rgba(139,84,47,0.28);
 }
 
-/* ============================================================ */
-/* 🎫 車票共用                                                   */
-/* ============================================================ */
+ 
+ 
+ 
 .ticket {
   position: relative;
   box-sizing: border-box;
@@ -655,6 +720,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   padding: 14px 22px;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);    
   gap: 6px;
 }
 .ticket .head {
@@ -665,25 +731,26 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   display: flex; flex-direction: column;
   font-size: 17px; color: #333; font-weight: 700; letter-spacing: 1px;
   line-height: 1.5;
-  flex: 1 1 auto; min-width: 0;   /* 讓車種車次有明確寬度可縮 */
+  flex: 1 1 auto; min-width: 0;    
 }
 .ticket .head-left .date-line { white-space: nowrap; overflow: hidden; }
 .ticket .head-left .type-line {
   font-size: 27px; font-weight: 900; letter-spacing: 0.5px;
-  white-space: nowrap; overflow: hidden;   /* 不換行，太長改用自動縮小 */
+  white-space: nowrap; overflow: hidden;    
 }
 .ticket .fare-tag {
   background: #1a1a1a; color: #fff;
   padding: 5px 14px; border-radius: 999px;
   font-size: 13px; font-weight: 700; letter-spacing: 2px;
-  white-space: nowrap; flex-shrink: 0;     /* 票種標籤不被擠壓換行 */
+  white-space: nowrap; flex-shrink: 0;      
 }
+.ticket .fare-m { display: none; }    
 .fare-tag.child { background: #1d4ed8; }
 .fare-tag.senior { background: #d97706; }
 .fare-tag.love { background: #be185d; }
 .fare-tag.love-companion { background: #7c3aed; }
 
-/* 「身分」色塊（大版，給查詢頁的身分格用） */
+ 
 .type-tag {
   display: inline-block;
   padding: 8px 18px;
@@ -694,7 +761,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   color: #fff;
   background: #6b7280;
 }
-.type-tag.adult { background: #92400e; }   /* 棕色 — 一般成人 */
+.type-tag.adult { background: #92400e; }    
 .type-tag.child { background: #1d4ed8; }
 .type-tag.senior { background: #d97706; }
 .type-tag.love { background: #be185d; }
@@ -719,14 +786,14 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   letter-spacing: 0; line-height: 1.15;
   display: block;
   min-width: 0;
-  white-space: nowrap;          /* 一行放得下就一行 */
+  white-space: nowrap;           
   overflow: hidden;
 }
-/* 預設：地名＋站別連在一起，看起來就是一整行「羅東火車站」 */
+ 
 .ticket .station-cn .st-place,
 .ticket .station-cn .st-kind { display: inline; }
 
-/* 放不下時才由 JS 加上 .two-line：在「地名／站別」之間斷行 */
+ 
 .ticket .station-cn.two-line .st-place {
   display: block; line-height: 1.1;
 }
@@ -755,7 +822,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   letter-spacing: 1.5px;
   background: rgba(255,255,255,0.92);
   border-radius: 8px; padding: 5px 14px;
-  white-space: nowrap; overflow: hidden;   /* 不換行，太長自動縮小 */
+  white-space: nowrap; overflow: hidden;    
   min-width: 0; flex: 0 1 auto;
 }
 .ticket .duration {
@@ -767,7 +834,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
 }
 .tba { color: #999; font-style: italic; font-weight: 400; }
 
-/* 🚄 高鐵 */
+ 
 .hsr { background: #ffffff; box-shadow: 0 8px 22px rgba(0,0,0,0.14); }
 .hsr .full-stripe {
   position: absolute; inset: 0;
@@ -775,7 +842,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   z-index: 1; pointer-events: none;
 }
 
-/* 🚂 台鐵 */
+ 
 .tra {
   background: repeating-linear-gradient(0deg,
     #f5e6a8 0px, #f5e6a8 2px,
@@ -791,7 +858,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
 }
 .tra .duration { background: rgba(0,0,0,0.08); font-family: Arial; font-weight: 700; }
 
-/* 🚌 遊覽車 */
+ 
 .bus {
   background: linear-gradient(135deg, #fefcf4 0%, #f5edd8 100%);
   border: 2px dashed #b8956a;
@@ -808,7 +875,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
 .bus .arrow-big { color: #b8956a; }
 .bus .duration { background: rgba(184,149,106,0.2); color: #4a3520; }
 
-/* 遊覽車多段路線（自動撐滿） */
+ 
 .bus .bus-route {
   display: flex; align-items: center;
   justify-content: center; gap: 6px;
@@ -838,23 +905,32 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   .ticket { aspect-ratio: auto; padding: 14px; }
   .ticket .station-cn { font-size: 32px; }
   .ticket .time-val { font-size: 22px; }
-  /* 車種＋車次、車廂座位：手機再放大（長輩看得清楚）*/
+   
   .ticket .head-left .type-line { font-size: 27px; }
   .ticket .seat-info { font-size: 26px; padding: 6px 12px; }
   .ticket .bottom { gap: 8px; }
+   
+  .ticket .head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .ticket .head-left { width: 100%; }
+   
+  .ticket { gap: 4px; padding: 12px 14px; }
+  .ticket.tra .head .fare-tag, .ticket.hsr .head .fare-tag, .ticket.bus .head .fare-tag, .ticket .duration { display: none; }
+  .ticket .fare-m { display: inline-block; }
+  .ticket .bottom { align-items: center; }
+  .ticket .head-left { line-height: 1.3; }
   .bus .stop .station-cn { font-size: 18px; }
   .bus .stop .time-val { font-size: 14px; }
 }
 
-/* ============================================================ */
-/* 🏨 房卡共用                                                   */
-/* ============================================================ */
+ 
+ 
+ 
 .room {
   position: relative;
   box-sizing: border-box;
   width: 100%; max-width: 540px;
   margin: 12px auto;
-  /* 用最小高度取代固定比例：同住者多時卡片可以長高，不會壓到底部日期 */
+   
   min-height: 270px;
   border-radius: 18px;
   overflow: hidden;
@@ -879,7 +955,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   font-family: "Noto Sans TC", Arial, sans-serif;
   white-space: nowrap;
 }
-/* 入住日期（第一個 span）放大跟車卡座位資訊一樣大 */
+ 
 .room .meta-corner > span:first-child {
   font-size: 18px;
   font-weight: 700;
@@ -915,7 +991,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   display: flex; flex-wrap: wrap;
   justify-content: center; gap: 5px 6px;
 }
-/* 同住者：一人一個方塊 */
+ 
 .room .rm-chip {
   display: inline-block;
   background: rgba(255,255,255,0.88);
@@ -931,7 +1007,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   margin: 0 auto 6px;
 }
 
-/* 🏨 房卡 A — 自然山景（綠） */
+ 
 .room-a { background: linear-gradient(180deg, #ffffff 0%, #fafdfb 100%); box-shadow: 0 10px 24px rgba(0,0,0,0.14); }
 .room-a .day-badge { background: #2f5d3d; color: #fff; }
 .room-a .name-cn, .room-a .room-no-line { color: #2f5d3d; }
@@ -946,7 +1022,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
 }
 .room-a .content { position: relative; z-index: 2; }
 
-/* 🏨 房卡 B — 中式廟宇印章（米色+深紅） */
+ 
 .room-b {
   background: radial-gradient(ellipse at center, #faf2dd 0%, #f0e2bb 100%);
   box-shadow: 0 10px 24px rgba(0,0,0,0.16);
@@ -975,7 +1051,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   font-family: "Noto Serif TC", serif;
 }
 
-/* 🏨 房卡 C — 海洋現代精品（深藍+金邊） */
+ 
 .room-c {
   background: linear-gradient(135deg, #1a3a5a 0%, #2c5878 50%, #4a8db5 100%);
   box-shadow: 0 12px 26px rgba(0,0,0,0.3);
@@ -998,6 +1074,7 @@ textarea:disabled { background: #f0f0f0; color: #888; }
 .room-c .room-no-line { color: #fff; }
 .room-c .room-no-label { color: #d4af6e; }
 .room-c .room-mate { color: #ffe4a8; }
+.room-c .rm-chip { color: #8b6508; }
 .room-c .meta-corner { color: rgba(255,255,255,0.78); }
 .room-c .ys-logo-small {
   width: 44px; height: 44px; margin: 0 auto 6px;
@@ -1007,38 +1084,57 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   .room { min-height: 0; padding: 28px 14px 22px; }
   .room .name-cn { font-size: 22px; }
   .room .room-no-line { font-size: 30px; }
-  /* 手機：底部日期/地址/電話改成正常排版（不絕對定位），卡片才會跟著長高不重疊 */
+   
   .room .meta-corner {
-    position: static;
+    position: relative;
     left: auto; right: auto; bottom: auto;
-    margin-top: 14px;
+    margin-top: 6px;
     white-space: normal; font-size: 12px;
     flex-wrap: wrap; justify-content: center; gap: 4px 12px;
     text-align: center;
   }
-  .room .meta-corner > span:first-child { font-size: 20px; width: 100%; }
+  .room .meta-corner > span:first-child { font-size: 15px; }
+  .room .meta-corner > span:nth-child(2) { order: 2; width: 100%; }    
+  .room .meta-corner > span:nth-child(3) { order: 1; }
+   
+  .room { padding: 34px 14px 12px; }
+  .room .content { position: static; }
+  .room .content > * { position: relative; z-index: 2; }
+  .room .day-badge { top: 9px; left: 10px; padding: 3px 10px; font-size: 11px; letter-spacing: 1px; }
+  .room .crest-small, .room .ys-logo-small, .room .stamp-mini-b { position: absolute; top: 4px; right: 10px; width: 28px; height: 28px; margin: 0; }
+  .room .name-cn { white-space: nowrap; overflow: hidden; }
+  .room .stamp-mini-b { font-size: 8px; border-width: 2px; }
+  .room .name-en { font-size: 12px; letter-spacing: 1px; margin: 0 0 2px; }
+  .room .room-no-line { margin: 0; line-height: 1.2; }
+  .room .room-mate { margin-top: 4px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 8px; }
+  .room .rm-label { margin: 0; }
+  .room .rm-chips { display: contents; }
 }
 
-/* ============================================================ */
-/* 📱 手機優化：版面等寬 + 字體大字（再放大版）                  */
-/* ============================================================ */
+ 
+ 
+ 
 @media (max-width: 560px) {
   body { padding: 8px 4px 100px 4px; }
   .top-card { padding: 20px 14px; border-radius: 22px; }
   .card { padding: 22px 16px; border-radius: 22px; }
   #result { padding: 0; max-width: 100%; }
 
-  /* grid 改單欄 */
+   
   .grid-3 { grid-template-columns: 1fr; gap: 12px; }
   .grid-2 { grid-template-columns: 1fr; gap: 12px; }
-  /* 手機：格線子項允許縮到欄寬，避免整頁被撐出橫向捲軸 */
+   
   .grid-2 > *, .grid-3 > * { min-width: 0; }
   .leg-time { white-space: normal; }
 
-  /* 字體再放大 */
+   
   .section-title { font-size: 32px; padding-left: 12px; }
+.predep { padding: 18px 16px; border-radius: 20px; }
+.predep .pd-t { font-size: 32px; }
+.predep .pd-s { font-size: 22px; }
+.predep .pd-go { font-size: 26px; padding: 12px; }
   .label { font-size: 28px; margin-bottom: 10px; }
-  /* 手機：用 clamp 依螢幕寬自動縮放，5~7 字都不換行 */
+   
   .value {
     font-size: clamp(20px, 7vw, 34px);
     padding: 14px 10px;
@@ -1049,8 +1145,8 @@ textarea:disabled { background: #f0f0f0; color: #888; }
   .info-box { padding: 22px 16px; }
   .roommates { font-size: 32px; padding: 22px; }
   .room-mate { font-size: 28px; }
-  .room .rm-label { font-size: 24px; }
-  .room .rm-chip { font-size: 27px; padding: 7px 16px; border-radius: 12px; }
+  .room .rm-label { font-size: 15px; }
+  .room .rm-chip { font-size: 22px; padding: 3px 10px; border-radius: 10px; }    
   .paid, .unpaid, .partial { font-size: 40px; }
   .pay-notice { font-size: 28px; padding: 18px; }
   .last-msg { font-size: 28px; padding: 18px 20px; }
@@ -1085,111 +1181,24 @@ textarea:disabled { background: #f0f0f0; color: #888; }
       <input type="text" id="name" placeholder="請輸入姓名">
       <button id="searchBtn" onclick="search()">🔍 立即查詢</button>
 
-      <!-- 「查詢缺人的房間」按鈕已隱藏（2026/08 不再開放給客人看）
-           想開回來：把下面 <div> 裡的註解符號拿掉即可，程式都還在。
-      <div id="roomsBtnArea">
-        <button class="rooms-btn" onclick="findRooms()">🛏 查詢缺人的房間（全部）</button>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-          <button class="rooms-btn" onclick="findRooms('三天兩夜')" style="background:#0f766e;margin-top:0">🚄 三天兩夜<br>缺人房</button>
-          <button class="rooms-btn" onclick="findRooms('兩天一夜')" style="background:#d97706;margin-top:0">🌙 兩天一夜<br>缺人房</button>
-        </div>
-      </div>
-      -->
+      
       <div id="roomsBtnArea" style="display:none"></div>
     </div>
   </div>
 
-  <!-- 進度公告大方塊（首頁顯示，查詢後隱藏）-->
+  
   <div id="progressBox"></div>
 
   <div id="result"></div>
 
 <script>
-/* ============================================================
-   GitHub Pages 版相容層
-   把原本的 google.script.run.xxx() 自動轉成 JSONP 呼叫 Apps Script。
-   好處：前台其他程式碼完全不用改，維護時兩邊一致。
-   為什麼要搬：Apps Script 網頁包在跨網域 iframe 裡，
-   Facebook / LINE / IG 的內建瀏覽器會擋掉 → 客人看到一片空白。
-   ============================================================ */
-var API_URL = "https://script.google.com/macros/s/AKfycbwlWbZzxvpgdG6CU9LS4bczYSzgpM9cxd8-CJWTbKtxJvFM3nX05Dk_5NrAaE2gK7SN/exec";
-
-function jsonp_(params, onOk, onErr) {
-  var cbName = "cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
-  var script = document.createElement("script");
-  var done = false;
-
-  function cleanup() {
-    try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
-    if (script.parentNode) script.parentNode.removeChild(script);
-  }
-
-  window[cbName] = function (data) {
-    if (done) return;
-    done = true;
-    cleanup();
-    onOk(data);
-  };
-
-  script.onerror = function () {
-    if (done) return;
-    done = true;
-    cleanup();
-    onErr({ message: "連線失敗，請檢查網路後再試一次" });
-  };
-
-  // 20 秒沒回應就當逾時
-  setTimeout(function () {
-    if (done) return;
-    done = true;
-    cleanup();
-    onErr({ message: "連線逾時，請稍後再試" });
-  }, 20000);
-
-  var qs = [];
-  for (var k in params) {
-    if (params[k] === undefined || params[k] === null) continue;
-    qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k]));
-  }
-  qs.push("callback=" + cbName);
-  script.src = API_URL + "?" + qs.join("&");
-  document.body.appendChild(script);
-}
-
-var google = { script: {} };
-Object.defineProperty(google.script, "run", {
-  get: function () {
-    var okCb = null, errCb = null;
-
-    function send(params) {
-      jsonp_(params,
-        function (data) { if (okCb) okCb(data); },
-        function (err)  { if (errCb) errCb(err); });
-    }
-
-    var api = {
-      withSuccessHandler: function (f) { okCb = f; return api; },
-      withFailureHandler: function (f) { errCb = f; return api; },
-
-      searchName:          function (name) { send({ action: "search",   name: name }); },
-      getProgressInfo:     function ()     { send({ action: "progress" }); },
-      confirmUser:         function (n, d, r)    { send({ action: "confirm", name: n, days: d, roommates: r }); },
-      saveMessage:         function (n, d, r, m) { send({ action: "message", name: n, days: d, roommates: r, message: m }); },
-      findIncompleteRooms: function (f)    { send({ action: "rooms", daysFilter: f || "" }); }
-    };
-    return api;
-  }
-});
-</script>
-
-<script>
 
 var SETTINGS = {};
 var DATES = { d1: "", d2: "", d3: "" };
-var SCHEDULE = [];   // 車次時刻表（站別 → 車次/時間），由後台「車次時刻表」分頁提供
+var SCHEDULE = [];   
 var currentRecord = null;
 
-// 載入進度公告
+
 function loadProgress() {
   google.script.run.withSuccessHandler(function(p) {
     if (!p || !p.show) { document.getElementById("progressBox").innerHTML = ""; return; }
@@ -1208,7 +1217,7 @@ function loadProgress() {
   }).getProgressInfo();
 }
 
-// ============== 工具 ==============
+
 function escapeHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -1229,7 +1238,7 @@ function getTicketStyle(type) {
   type = String(type || "").toLowerCase();
   if (type.indexOf("遊覽車") >= 0 || type.indexOf("bus") >= 0) return "bus";
   if (type.indexOf("高鐵") >= 0 || type.indexOf("hsr") >= 0) return "hsr";
-  return "tra"; // 台鐵 / 自強 / 區間 / 莒光 等
+  return "tra"; 
 }
 
 function getFareTagClass(fare) {
@@ -1258,7 +1267,7 @@ function calcDuration(start, end) {
   return m + "min";
 }
 
-// 用關鍵字判斷飯店（碧海/藍天、慈惠/聖地/香客、長榮/鳳凰/礁溪）
+
 function hotelKeyword_(s) {
   s = String(s || "");
   if (/碧海|藍天|Ocean|Hyaline/i.test(s)) return "碧海";
@@ -1275,7 +1284,7 @@ function getHotelInfo(hotelName) {
   for (var i = 1; i <= 3; i++) {
     var name = SETTINGS["飯店" + i + "中文名"];
     if (!name) continue;
-    // 1) 直接包含 2) 關鍵字相同（兩者都有就算同一家）
+    
     var match = (hotelName.indexOf(name) >= 0 || name.indexOf(hotelName) >= 0);
     if (!match && targetKey && hotelKeyword_(name) === targetKey) match = true;
     if (match) {
@@ -1293,17 +1302,19 @@ function getHotelInfo(hotelName) {
   return null;
 }
 
-// ============== 主流程 ==============
-function search() {
+
+function search(qrKey) {
+  
+  var byKey = typeof qrKey === "string" && qrKey !== "";
   var name = document.getElementById("name").value.trim();
   var resultEl = document.getElementById("result");
 
-  if (name === "") {
+  if (!byKey && name === "") {
     resultEl.innerHTML = "<div class='notice'>請先輸入姓名喔</div>";
     return;
   }
 
-  // 查個人時把「查詢缺人房間」按鈕、進度公告收起來，畫面乾淨
+  
   var roomsArea = document.getElementById("roomsBtnArea");
   if (roomsArea) roomsArea.style.display = "none";
   var pBox = document.getElementById("progressBox");
@@ -1325,16 +1336,18 @@ function search() {
     if (data.schedule) SCHEDULE = data.schedule;
 
     if (data.type === "notfound") {
+      if (byKey) { resultEl.innerHTML = "<div class='notice'>這個 QR 碼查不到資料，請直接輸入姓名查詢</div>"; return; }
       renderNotFound(data.suggestions || []);
       return;
     }
     if (data.type === "found") {
+      if (byKey && data.records[0]) document.getElementById("name").value = data.records[0].name || "";
       if (data.records.length === 1) renderRecord(data.records[0]);
       else renderChoose(data.records);
     }
   }).withFailureHandler(function(err) {
     resultEl.innerHTML = "<div class='notice'>⚠ 查詢失敗：" + escapeHtml(err.message || err) + "</div>";
-  }).searchName(name);
+  })[byKey ? "searchKey" : "searchName"](byKey ? qrKey : name);
 }
 
 function renderNotFound(suggestions) {
@@ -1367,13 +1380,24 @@ function pickRecord(idx) {
   if (r) renderRecord(r);
 }
 
-// ============== 渲染：主卡 ==============
+
+
+
+function predepLinkHtml_() {
+  var url = String(SETTINGS["行前資料連結"] || "https://claude.ai/artifact/9npSYYWDbGzuSwKD3PcU1H").trim();
+  if (url.indexOf("https://") !== 0) return "";
+  return "<a class='predep' href='" + escapeAttr(url) + "' target='_blank' rel='noopener'>" +
+    "<span class='pd-t'>📘 行前資料</span>" +
+    "<span class='pd-s'>集合、車表、房間、地址電話都在這裡，會隨時更新</span>" +
+    "<span class='pd-go'>點我打開 ›</span></a>";
+}
+
 function renderRecord(data) {
   currentRecord = data;
 
   var isTwoDay = String(data.days || "").indexOf("兩天一夜") >= 0;
 
-  // 繳費（已繳費 / 已付現 / 已轉帳 / 繳清… 都算已繳；後面可接日期金額）
+  
   var isPaid = /已繳|已付|已轉|繳清|完成/.test(String(data.paid || ""));
   var paidClass = "unpaid";
   if (isPaid) paidClass = "paid";
@@ -1381,71 +1405,70 @@ function renderRecord(data) {
   var paidDisplay = data.paid
     ? "<span class='" + paidClass + "'>" + escapeHtml(data.paid) + "</span>"
     : "—";
-  var payNotice = "";  // 繳費提示移到「確認後」才出現（見 confirmBlockHtml）
+  var payNotice = "";  
 
-  // 是否用漂亮卡片（已繳費 + 有新版車票資料）
+  
   var hasNewTickets = data.tickets && data.tickets.some(function(t) {
     return t.type || t.no || t.car || t.seat;
   });
   var hasHotelSettings = SETTINGS["飯店1中文名"] || SETTINGS["飯店2中文名"] || SETTINGS["飯店3中文名"];
   var usePretty = isPaid && hasNewTickets;
 
-  // 按天數分組組裝（漂亮版）
+  
   var dayGroupedHtml = "";
   if (usePretty) {
-    var t = data.tickets;  // [D1, D2, D3自強, D3高鐵]
-    var aftDest = isTwoDay ? "宜蘭火車站" : "長榮礁溪飯店";
+    var t = data.tickets;  
+    var aftDest = !isTwoDay ? "長榮礁溪飯店" : (String(data.dropoff2 || "").indexOf("台北") >= 0 ? "台北火車站" : "羅東火車站");
 
-    // === 第一天 ===
+    
     var day1 = "";
     day1 += renderTicket(t[0], t[0].dayLabel || "第一天", DATES.d1);
-    day1 += renderShuttleCard("第一天接駁", data.shuttle, "花蓮 ▶ 勝安宮 ▶ 飯店");
+    day1 += renderShuttleCard("第一天接駁", data.shuttle, "花蓮 ▶ 飯店 ▶ 勝安宮");
     if (hasHotelSettings && data.hotel1) {
       day1 += renderRoomCard(data.hotel1, data.room1, data.roommates, 1, DATES.d1);
     }
     if (day1) dayGroupedHtml += "<div class='day-header'>📅 第一天　" + escapeHtml(DATES.d1) + "</div>" + day1;
 
-    // === 第二天 ===
+    
     var day2 = "";
-    day2 += renderShuttleCard("第二天上午", data.shuttleMid, "飯店 ▶ 三清宮");
-    day2 += renderShuttleCard("第二天下午", data.shuttleAft, "三清宮 ▶ " + aftDest);
+    day2 += renderShuttleCard("第二天接駁", data.shuttleAft, "飯店 ▶ 三清宮 ▶ " + aftDest);
     if (isTwoDay) {
-      // 兩天一夜：第二天搭火車回家
+      
       day2 += renderTicket(t[1], t[1].dayLabel || "第二天 回程", DATES.d2);
     } else {
-      // 三天兩夜：第二夜房卡
+      
       if (hasHotelSettings && data.hotel2) {
         day2 += renderRoomCard(data.hotel2, data.room2, (data.roommates2 || data.roommates), 2, DATES.d2);
       }
     }
     if (day2) dayGroupedHtml += "<div class='day-header'>📅 第二天　" + escapeHtml(DATES.d2) + "</div>" + day2;
 
-    // === 第三天（只有三天兩夜）===
+    
     if (!isTwoDay) {
       var day3 = "";
+      day3 += renderBrunchLine_(data.brunch);   
       day3 += renderTicket(t[2], t[2].dayLabel || "第三天 ‧ 自強號", DATES.d3);
       day3 += renderTicket(t[3], t[3].dayLabel || "第三天 ‧ 高鐵", DATES.d3);
       if (day3) dayGroupedHtml += "<div class='day-header'>📅 第三天　" + escapeHtml(DATES.d3) + "</div>" + day3;
     }
   }
 
-  // 舊版 fallback（未繳費 / 沒新版資料）
+  
   var legacyTransportHtml = renderLegacyTransport(data, isTwoDay);
   var legacyHotelsHtml = (data.hotel1 || data.hotel2) ? renderLegacyHotels(data, isTwoDay) : "";
   var legacyShuttleHtml = "";
   if (data.shuttle || data.shuttleMid || data.shuttleAft) {
-    var aftDest2 = isTwoDay ? "宜蘭火車站" : "長榮礁溪飯店";
+    var aftDest2 = !isTwoDay ? "長榮礁溪飯店" : (String(data.dropoff2 || "").indexOf("台北") >= 0 ? "台北火車站" : "羅東火車站");
     var aftVal2 = data.shuttleAft
       ? escapeHtml(data.shuttleAft) + "<div style='font-size:18px;color:#7a4b1f;margin-top:6px;font-weight:600'>(→ " + escapeHtml(aftDest2) + ")</div>"
       : "—";
-    legacyShuttleHtml = "<div class='info-block'><div class='grid-3'>" +
-      infoBox("第1天接駁（花蓮↔勝安宮）", data.shuttle || "—") +
-      infoBox("第2天上午（飯店→三清宮）", data.shuttleMid || "—") +
-      "<div class='info-box'><div class='label'>第2天下午（三清宮後）</div><div class='value'>" + aftVal2 + "</div></div>" +
+    legacyShuttleHtml = "<div class='info-block'><div class='grid-2'>" +
+      infoBox("第1天接駁（花蓮→飯店→勝安宮）", data.shuttle || "—") +
+      "<div class='info-box'><div class='label'>第2天接駁</div><div class='value'>" + aftVal2 + "</div></div>" +
     "</div></div>";
   }
 
-  // 上次留言
+  
   var lastMsgHtml = "";
   if (data.lastMessage) {
     lastMsgHtml = "<div class='last-msg'>📜 上次留言：" + escapeHtml(data.lastMessage) +
@@ -1453,22 +1476,22 @@ function renderRecord(data) {
       "</div>";
   }
 
-  // 確認
+  
   var isConfirmed = data.confirmed === "已確認";
   var confirmBlockHtml;
   if (isConfirmed) {
     confirmBlockHtml =
-      "<div class='confirm-done'>✅ 已確認" +
-      (data.confirmTime ? "<div class='ts'>" + escapeHtml(data.confirmTime) + "</div>" : "") +
-      "</div>" +
-      "<div class='confirm-next-step'>💌 請私訊主辦繳費</div>";
+      "<details class='fold'><summary class='section-title'>✅ 已確認</summary>" +
+        (data.confirmTime ? "<div class='ts' style='text-align:center; margin:4px 0 8px'>確認時間：" + escapeHtml(data.confirmTime) + "</div>" : "") +
+        "<div class='confirm-next-step'>💌 請私訊主辦繳費</div>" +
+      "</details>";   
   } else {
     confirmBlockHtml =
       "<button class='big-confirm-btn' id='confirmBtn' onclick='confirmInfo()'>✅ 以上資訊無誤，按此送出</button>" +
       "<div class='confirm-hint'>住宿搭車金額確認無誤後，請按確認鍵，即可開始繳費 💰</div>";
   }
 
-  // 三天兩夜 = 淺藍底 / 兩天一夜 = 淺黃底
+  
   var colorClass = isTwoDay ? "yellow" : "blue";
 
   var html = "<div class='card " + colorClass + "'>" +
@@ -1476,29 +1499,31 @@ function renderRecord(data) {
     "<div style='text-align:center;margin-bottom:8px'>" +
       "<button class='back-btn' onclick='resetSearch()'>← 重新查詢</button>" +
     "</div>";
+  html += predepLinkHtml_();   
 
   if (usePretty) {
-    // 已繳費 → 按天數分組顯示漂亮卡片
+    
     html += dayGroupedHtml;
   } else {
-    // 未繳費 / 沒新版資料 → 舊版 info-box 核對版
+    
     html += "<div class='section-title'>🚌 接送資訊</div>" + legacyTransportHtml;
     if (legacyHotelsHtml) html += "<div class='section-title'>🏨 住宿</div>" + legacyHotelsHtml;
     if (legacyShuttleHtml) html += "<div class='section-title'>🚌 接駁遊覽車</div>" + legacyShuttleHtml;
+    if (data.brunch) html += "<div class='section-title'>🍽 10/19 早午餐</div>" + renderBrunchLine_(data.brunch);
     html += "<div class='info-block' style='text-align:center; padding:14px; color:#7a4b1f; background:#fff7e6; border:2px dashed #d4a017; font-weight:bold; line-height:1.7; font-size:17px; margin-top:10px'>" +
       "💰 上面是核對用資訊，完成繳費後會升級成正式的<br>" +
       "🎫 <b>車票</b> ／ 🏨 <b>房卡</b> ／ 🚌 <b>接駁車</b> 精緻卡片" +
       "</div>";
   }
 
-  // 身分（用色塊區分：成人黑 / 孩童藍 / 敬老橘 / 愛心粉 / 愛心陪同紫）
+  
   var typeTagClass = getFareTagClass(data.type);
   var typeDisplay = data.type
     ? "<span class='type-tag " + typeTagClass + "'>" + escapeHtml(data.type) + "</span>"
     : "—";
 
-  // 身分 / 費用
-  html += "<div class='section-title'>💰 身分 / 費用</div>" +
+  
+  html += "<details class='fold'><summary class='section-title'>💰 身分 / 費用</summary>" +
     "<div class='info-block'>" +
       "<div class='grid-3'>" +
         "<div class='info-box'>" +
@@ -1512,37 +1537,35 @@ function renderRecord(data) {
         "</div>" +
       "</div>" +
       payNotice +
-    "</div>";
+    "</div></details>";
 
-  // 留言區（整個區塊預設隱藏，只顯示一個小按鈕）
+  
   var msgBtnText = data.lastMessage
     ? "💬 查看 / 修改我的留言"
     : "💬 我要留言給主辦（選填）";
 
-  html += "<div style='text-align:center; margin: 18px 0 0'>" +
-    "<button class='msg-toggle-btn' onclick='toggleMessage()'>" + msgBtnText + "</button>" +
-  "</div>";
+  html += "<details class='fold'><summary class='section-title'>" + msgBtnText + "</summary>";
 
-  html += "<div id='messageBlock' class='block' style='display:none; margin-top:12px'>" +
+  html += "<div id='messageBlock' class='block' style='margin-top:12px'>" +
     "<div class='block-title'>📝 客人留言</div>" +
     lastMsgHtml +
     "<textarea id='guestMessage' placeholder='若有需要調整或提醒事項，請在這裡留言'></textarea>" +
     "<button class='confirm-btn' id='msgBtn' onclick='sendMessage()'>送出留言</button>" +
-  "</div>";
+  "</div></details>";
 
-  // 確認區（最後步驟）
+  
   html += "<div class='block'>" +
     confirmBlockHtml +
   "</div>";
 
-  html += "</div>"; // close card
+  html += "</div>"; 
 
   document.getElementById("result").innerHTML = html;
-  scheduleFit_();   // 站名／車次／座位 太長時自動縮到剛好
+  scheduleFit_();   
 }
 
-// 站名太長時，在「地名 / 站別」之間斷成兩行（不會斷在半個詞中間）
-// 例：羅東火車站 → 羅東 ／ 火車站　　高雄左營高鐵站 → 高雄左營 ／ 高鐵站
+
+
 function stationHtml_(name) {
   var s = String(name == null ? "" : name).trim();
   if (!s) return "—";
@@ -1554,12 +1577,12 @@ function stationHtml_(name) {
   return "<span class='st-place'>" + escapeHtml(s) + "</span>";
 }
 
-// ============== 車票卡文字自動縮放 ==============
-// 站名（羅東火車站／高雄左營高鐵站…）長度不一，太長會被切掉。
-// 這裡量測實際寬度，超出就一級一級縮小，直到塞得下為止。
+
+
+
 function fitOne_(el, minPx) {
   if (!el) return;
-  el.style.fontSize = "";                       // 先還原成 CSS 預設值再量
+  el.style.fontSize = "";                       
   var size = parseFloat(window.getComputedStyle(el).fontSize) || 20;
   var guard = 0;
   while (el.scrollWidth > el.clientWidth + 1 && size > minPx && guard++ < 60) {
@@ -1568,18 +1591,18 @@ function fitOne_(el, minPx) {
   }
 }
 
-// 站名策略：① 先試一行 → ② 放不下就在「地名／站別」之間斷成兩行 → ③ 還是不夠才縮字
+
 function fitStation_(el, minPx) {
   if (!el) return;
   el.classList.remove("two-line");
   el.style.fontSize = "";
-  if (el.scrollWidth <= el.clientWidth + 1) return;      // ① 一行就夠了
+  if (el.scrollWidth <= el.clientWidth + 1) return;      
 
-  el.classList.add("two-line");                          // ② 斷詞成兩行
+  el.classList.add("two-line");                          
   if (el.scrollWidth <= el.clientWidth + 1) return;
 
   var size = parseFloat(window.getComputedStyle(el).fontSize) || 26;
-  var guard = 0;                                         // ③ 仍太寬 → 縮字
+  var guard = 0;                                         
   while (el.scrollWidth > el.clientWidth + 1 && size > minPx && guard++ < 60) {
     size -= 1;
     el.style.fontSize = size + "px";
@@ -1591,8 +1614,10 @@ function fitTicketText() {
   for (var i = 0; i < stations.length; i++) fitStation_(stations[i], 15);
 
   var sel = [
+    [".ticket .date-line",  12],
     [".ticket .type-line",  14],
     [".ticket .seat-info",  13],
+    [".shuttle-ticket .st-route", 12],
     [".room .name-cn",      14]
   ];
   sel.forEach(function(pair) {
@@ -1601,20 +1626,33 @@ function fitTicketText() {
   });
 }
 
-// 字型是網路載入的，載完寬度會變 → 再算一次
+
 function scheduleFit_() {
-  fitTicketText();
+  fitTicketText(); equalizeCards_();
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(fitTicketText).catch(function(){});
+    document.fonts.ready.then(function() { fitTicketText(); equalizeCards_(); }).catch(function(){});
   }
-  setTimeout(fitTicketText, 300);
+  setTimeout(function() { fitTicketText(); equalizeCards_(); }, 300);
+  setTimeout(equalizeCards_, 1200);   
 }
 
-// 轉螢幕方向／改變視窗大小也要重算
+
+function equalizeCards_() {
+  var cards = document.querySelectorAll('#result .ticket, #result .shuttle-ticket, #result .room');
+  if (!cards.length) return;
+  var i, max = 0;
+  for (i = 0; i < cards.length; i++) cards[i].style.minHeight = '';
+  for (i = 0; i < cards.length; i++) max = Math.max(max, cards[i].getBoundingClientRect().height);
+  
+  if (window.matchMedia && window.matchMedia("(max-width: 560px)").matches) max = Math.max(max, cards[0].getBoundingClientRect().width / 1.4);
+  for (i = 0; i < cards.length; i++) cards[i].style.minHeight = Math.ceil(max) + 'px';
+}
+
+
 var _fitTimer = null;
 window.addEventListener("resize", function() {
   clearTimeout(_fitTimer);
-  _fitTimer = setTimeout(fitTicketText, 150);
+  _fitTimer = setTimeout(function() { fitTicketText(); equalizeCards_(); }, 150);
 });
 
 function infoBox(label, value, extraHtml) {
@@ -1625,7 +1663,7 @@ function infoBox(label, value, extraHtml) {
     "</div>";
 }
 
-// 站名比對：完全相同，或互相包含（「高雄」也對得到「高雄火車站」）
+
 function stationMatch_(a, b) {
   a = String(a == null ? "" : a).trim();
   b = String(b == null ? "" : b).trim();
@@ -1634,8 +1672,8 @@ function stationMatch_(a, b) {
   return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
 }
 
-// 依「天別 + 站名」找出該班車，組成要顯示在站名底下的 HTML
-// dayKey = 第一天上車 / 第二天下車 / 第三天下車
+
+
 function trainInfoHtml(dayKey, station) {
   if (!station || !SCHEDULE || !SCHEDULE.length) return "";
   var rows = SCHEDULE.filter(function(r) {
@@ -1649,19 +1687,19 @@ function trainInfoHtml(dayKey, station) {
     var cls  = /高鐵/.test(type) ? "hsr" : (/遊覽|包車|巴士/.test(type) ? "bus" : "tra");
     var icon = (cls === "hsr") ? "🚄" : (cls === "bus") ? "🚌" : "🚆";
 
-    // 備註若寫「第1段：礁溪 ▶ 南港」→ 段號自動變成標籤，其餘當路線
+    
     var badge = "", route = String(r.note || "");
     var m = route.match(/^第\s*([0-9０-９一二三四五六])\s*段\s*[：:]\s*/);
     if (m) { badge = "第" + m[1] + "段"; route = route.slice(m[0].length); }
 
     html += "<div class='leg " + cls + "'>";
 
-    // ① 段號（左上角，自成一行）
+    
     if (badge) {
       html += "<div class='leg-badge-row'><span class='leg-badge'>" +
               escapeHtml(badge) + "</span></div>";
     }
-    // ② 車種 + 車次
+    
     html += "<div class='leg-type'>" + icon + " " + escapeHtml(type) +
             (r.no ? "　" + escapeHtml(r.no) + " 次" : "") + "</div>";
 
@@ -1679,7 +1717,7 @@ function trainInfoHtml(dayKey, station) {
   return html;
 }
 
-// 接駁車卡片（黃車身 + 橘漩渦 + Q 版遊覽車底圖）
+
 function renderShuttleCard(label, busNo, route) {
   if (!busNo) return "";
   var swirl =
@@ -1689,28 +1727,28 @@ function renderShuttleCard(label, busNo, route) {
       "<circle cx='60' cy='100' r='22' fill='none' stroke='#e65100' stroke-width='6' opacity='0.45'/>" +
       "<circle cx='60' cy='100' r='10' fill='none' stroke='#fb8c00' stroke-width='4' opacity='0.5'/>" +
     "</svg>";
-  // Q 版遊覽車（右下角底圖，半透明）
+  
   var busImg =
     "<svg class='bus-img' viewBox='0 0 120 70'>" +
-      // 車身
+      
       "<rect x='6' y='14' width='104' height='38' rx='10' fill='#ffe082' stroke='#e65100' stroke-width='2.5'/>" +
-      // 車頂
+      
       "<rect x='10' y='10' width='96' height='8' rx='4' fill='#ffca28'/>" +
-      // 窗戶（一排）
+      
       "<rect x='14' y='20' width='16' height='12' rx='3' fill='#90caf9'/>" +
       "<rect x='34' y='20' width='16' height='12' rx='3' fill='#90caf9'/>" +
       "<rect x='54' y='20' width='16' height='12' rx='3' fill='#90caf9'/>" +
       "<rect x='74' y='20' width='16' height='12' rx='3' fill='#90caf9'/>" +
-      // 車門
+      
       "<rect x='94' y='20' width='12' height='24' rx='2' fill='#bbdefb'/>" +
-      // 橘色腰線
+      
       "<rect x='6' y='38' width='104' height='5' fill='#fb8c00'/>" +
-      // 輪子
+      
       "<circle cx='30' cy='54' r='9' fill='#37474f'/>" +
       "<circle cx='30' cy='54' r='4' fill='#90a4ae'/>" +
       "<circle cx='88' cy='54' r='9' fill='#37474f'/>" +
       "<circle cx='88' cy='54' r='4' fill='#90a4ae'/>" +
-      // 大燈
+      
       "<circle cx='108' cy='34' r='3' fill='#fff59d'/>" +
     "</svg>";
   return "<div class='shuttle-ticket'>" +
@@ -1726,7 +1764,7 @@ function renderShuttleCard(label, busNo, route) {
   "</div>";
 }
 
-// 舊版 fallback：接送資訊（用 pickup / dropoff2 / dropoff3 欄位）
+
 function renderLegacyTransport(data, isTwoDay) {
   var html = "<div class='info-block'>";
   if (isTwoDay) {
@@ -1745,25 +1783,32 @@ function renderLegacyTransport(data, isTwoDay) {
   return html;
 }
 
-// 舊版 fallback：住宿（用 hotel1 / hotel2 欄位） + 同住者
+
+function legacyRoomLine_(room) {
+  room = String(room == null ? "" : room).trim();
+  if (!room || room === "-" || !showField("房號")) return "";
+  return "<div style='margin-top:6px;font-weight:700;color:#5a3d12'>🔑 房號 <span style='font-size:1.3em'>" + escapeHtml(room) + "</span></div>";
+}
+
+
 function renderLegacyHotels(data, isTwoDay) {
-  var mates2 = data.roommates2 || data.roommates;  // 第二天同住者（沒填沿用第一天）
+  var mates2 = data.roommates2 || data.roommates;  
   var html = "<div class='info-block'>";
   if (isTwoDay) {
-    // 兩天一夜：只有第一天，一組同住者
-    html += infoBox("第一天入住", data.hotel1);
+    
+    html += infoBox("第一天入住", data.hotel1, legacyRoomLine_(data.room1));
     if (showField("同住者")) {
       html += "<div class='roommates'>🌱 同住者：" + renderRoommates(data.roommates) + "</div>";
     }
   } else {
-    // 三天兩夜：第一天 + 第二天，各自帶同住者
+    
     html += "<div class='grid-2'>" +
       "<div>" +
-        infoBox("第一天入住", data.hotel1) +
+        infoBox("第一天入住", data.hotel1, legacyRoomLine_(data.room1)) +
         (showField("同住者") ? "<div class='roommates'>🌱 第一天同住：" + renderRoommates(data.roommates) + "</div>" : "") +
       "</div>" +
       "<div>" +
-        infoBox("第二天入住", data.hotel2) +
+        infoBox("第二天入住", data.hotel2, legacyRoomLine_(data.room2)) +
         (showField("同住者") ? "<div class='roommates'>🌱 第二天同住：" + renderRoommates(mates2) + "</div>" : "") +
       "</div>" +
       "</div>";
@@ -1786,7 +1831,20 @@ function renderRoommates(raw) {
   }).join(" ");
 }
 
-// ============== 渲染：車票 ==============
+
+
+function renderBrunchLine_(b) {
+  if (!b) return "";
+  var label = b.registered ? (b.first ? "第一時段 " : "第二時段 ") + escapeHtml(b.slot) : "還沒登記";
+  var note = b.registered ? "（" + escapeHtml(b.by) + " 登記）" : "（沒登記的人由小秘書分配）";
+  return "<div class='brunch-line'>" +
+    "<div class='bl-t'>🍽 10/19 早午餐（長榮礁溪 自助式）</div>" +
+    "<div class='bl-v'>" + label + "</div>" +
+    "<div class='bl-n'>" + note + "</div>" +
+    (b.url ? "<a class='bl-a' href='" + escapeAttr(b.url) + "' target='_top'>" + (b.registered ? "改時段 ›" : "去登記時段 ›") + "</a>" : "") +
+    "</div>";
+}
+
 function renderTicket(t, dayLabelOrN, date) {
   if (!t.type && !t.no && !t.car && !t.seat) return "";
 
@@ -1797,7 +1855,7 @@ function renderTicket(t, dayLabelOrN, date) {
 
 function renderTrainTicket(t, dayLabelOrN, date, style) {
   var icon = style === "hsr" ? "🚄" : "🚂";
-  // 兼容數字（舊版）和字串（新版 D1/D2/D3自強/D3高鐵）
+  
   var dayLabel = typeof dayLabelOrN === 'number'
     ? (["", "第一天", "第二天", "第三天"][dayLabelOrN] || '車票')
     : (dayLabelOrN || t.dayLabel || '車票');
@@ -1816,15 +1874,16 @@ function renderTrainTicket(t, dayLabelOrN, date, style) {
   }
 
   var seatParts = [];
-  if (showField("車廂") && t.car) seatParts.push(t.car + " 車");
-  if (showField("座位") && t.seat) seatParts.push(t.seat + " 號");
-  var seatInfo = seatParts.length ? seatParts.join(" ") + (style === "tra" ? " 對號座" : "") : "";
+  if (showField("車廂") && t.car) seatParts.push(/^\d+$/.test(t.car) ? "第" + t.car + "車廂" : t.car);
+  if (showField("座位") && t.seat) seatParts.push(/^\d+$/.test(t.seat) ? t.seat + "號" : t.seat);
+  var seatInfo = seatParts.length ? seatParts.join(" ") : "";
 
-  var trainNoText = (t.no ? t.no + " 次" : "");
+  var trainNoText = (t.no ? (/^\d+$/.test(String(t.no).trim()) ? t.no + " 次" : t.no) : "");   
   var typeLine = icon + " " + (t.type || "") + (showField("車次") && trainNoText ? " " + trainNoText : "");
 
   var fareHtml = (showField("票種") && t.fare)
     ? "<span class='fare-tag " + fareTagClass + "'>" + escapeHtml(t.fare) + "</span>" : "";
+  var fareHtmlM = fareHtml ? "<span class='fare-tag fare-m " + fareTagClass + "'>" + escapeHtml(t.fare) + "</span>" : "";   
 
   var fromTimeHtml = showField("出發時間") ? (t.fromTime || tba("待通知")) : "";
   var toTimeHtml = showField("抵達時間") ? (t.toTime || tba("待通知")) : "";
@@ -1854,7 +1913,7 @@ function renderTrainTicket(t, dayLabelOrN, date, style) {
     "</div>" +
     "<div class='bottom'>" +
       "<span class='seat-info'>" + escapeHtml(seatInfo) + "</span>" +
-      durationHtml +
+      durationHtml + fareHtmlM +
     "</div>" +
   "</div>";
 }
@@ -1886,6 +1945,7 @@ function renderBusTicket(t, dayLabelOrN, date) {
   var fareHtml = (showField("票種") && t.fare)
     ? "<span class='fare-tag'>" + escapeHtml(t.fare) + "</span>"
     : "<span class='fare-tag'>主辦安排</span>";
+  var fareHtmlM = fareHtml.replace("'fare-tag'", "'fare-tag fare-m'");   
   var durationHtml = (showField("行駛時間") && duration)
     ? "<span class='duration'>⏱ " + escapeHtml(duration) + "</span>" : "";
 
@@ -1902,12 +1962,12 @@ function renderBusTicket(t, dayLabelOrN, date) {
     "</div>" +
     "<div class='bottom'>" +
       "<span class='seat-info'></span>" +
-      durationHtml +
+      durationHtml + fareHtmlM +
     "</div>" +
   "</div>";
 }
 
-// ============== 渲染：房卡 ==============
+
 function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
   if (!hotelName) return "";
 
@@ -1933,7 +1993,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
   var dayLabel = "第" + dayCh + "夜";
   var nightLabel = "NIGHT " + (dayN < 10 ? "0" + dayN : dayN);
 
-  // 徽章 / 印章 / Y.S
+  
   var crestSvg = "";
   if (style === "a") {
     crestSvg = "<svg class='crest-small' viewBox='0 0 60 60'>" +
@@ -1955,7 +2015,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
       "</svg>";
   }
 
-  // 底部裝飾
+  
   var decoSvg = "";
   if (style === "a") {
     decoSvg = "<svg class='mountain' viewBox='0 0 540 80' preserveAspectRatio='none'>" +
@@ -1969,7 +2029,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
       "</svg>";
   }
 
-  // 房號
+  
   var roomNoHtml = "";
   if (showField("房號")) {
     var roomLabel = (style === "c") ? "ROOM" : "房號";
@@ -1979,7 +2039,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
       roomVal + "</div>";
   }
 
-  // 同住者：每個名字一個方塊，長名單自動換行排列
+  
   var roomMateHtml = "";
   if (showField("同住者") && roommates) {
     var mateList = String(roommates).split(/[+、,，\/／\s]+/)
@@ -1997,7 +2057,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
     }
   }
 
-  // 右下角 meta：日期/地址/電話 一行 left-center-right
+  
   var dateHtml = "<span>📅 " + escapeHtml(date || "—") + "</span>";
   var addrHtml = (showField("地址") && address) ? "<span>📍 " + escapeHtml(address) + "</span>" : "<span></span>";
   var phoneHtml = (showField("電話") && phone) ? "<span>📞 " + escapeHtml(phone) + "</span>" : "<span></span>";
@@ -2019,7 +2079,7 @@ function renderRoomCard(hotelName, roomNo, roommates, dayN, date) {
   return html;
 }
 
-// ============== 確認 / 留言 ==============
+
 function confirmInfo() {
   if (!currentRecord) return;
   var btn = document.getElementById("confirmBtn");
@@ -2072,10 +2132,10 @@ function nowStr() {
     pad(d.getHours()) + ":" + pad(d.getMinutes());
 }
 
-// 查詢缺人的房間（三層導覽：夜→飯店→房型→房間）
+
 var ROOMS_DATA = null;
 
-// 重新查詢：清空結果、恢復房間按鈕、聚焦輸入框
+
 function resetSearch() {
   document.getElementById("result").innerHTML = "";
   document.getElementById("name").value = "";
@@ -2107,7 +2167,7 @@ function findRooms(daysFilter) {
   }).findIncompleteRooms(daysFilter || null);
 }
 
-// 把「碧海藍天-兩人房」拆成 {hotel: "碧海藍天", type: "兩人房"}
+
 function splitHotelType(s) {
   s = String(s || "");
   var m = s.match(/^(.+?)[-‐](.+)$/);
@@ -2130,7 +2190,7 @@ function groupByHotel(rooms) {
   return byHotel;
 }
 
-// Step 1：列出兩夜的飯店
+
 function showHotelList() {
   var filterLabel = '';
   if (ROOMS_DATA && ROOMS_DATA.daysFilter) {
@@ -2150,7 +2210,7 @@ function showHotelList() {
     }
 
     var byHotel = groupByHotel(rooms);
-    // 排序：碧海 → 慈惠堂 → 長榮 → 其他
+    
     var hotelKeys = Object.keys(byHotel).sort(function(a, b) {
       var pa = /碧海|藍天/.test(a) ? 1 : /慈惠|聖地/.test(a) ? 2 : /長榮|鳳凰/.test(a) ? 3 : 99;
       var pb = /碧海|藍天/.test(b) ? 1 : /慈惠|聖地/.test(b) ? 2 : /長榮|鳳凰/.test(b) ? 3 : 99;
@@ -2176,7 +2236,7 @@ function showHotelList() {
   document.getElementById("result").innerHTML = html;
 }
 
-// Step 2：點某飯店 → 顯示房型
+
 function showHotel(night, hotel) {
   var rooms = ROOMS_DATA[night] || [];
   var byHotel = groupByHotel(rooms);
@@ -2190,7 +2250,7 @@ function showHotel(night, hotel) {
   if (Object.keys(types).length === 0) {
     html += "<div class='notice'>所有房間都已滿</div>";
   } else {
-    // 房型排序：兩人房 → 四人房 → 其他
+    
     var typeKeys = Object.keys(types).sort(function(a, b) {
       var sa = /兩人|雙人|2\s*人/.test(a) ? 2 : /三人|3\s*人/.test(a) ? 3 : /四人|4\s*人/.test(a) ? 4 : 99;
       var sb = /兩人|雙人|2\s*人/.test(b) ? 2 : /三人|3\s*人/.test(b) ? 3 : /四人|4\s*人/.test(b) ? 4 : 99;
@@ -2214,7 +2274,7 @@ function showHotel(night, hotel) {
   document.getElementById("result").innerHTML = html;
 }
 
-// Step 3：點某房型 → 顯示缺人房間
+
 function showRooms(night, hotel, type) {
   var rooms = ROOMS_DATA[night] || [];
   var byHotel = groupByHotel(rooms);
@@ -2245,7 +2305,7 @@ function showRooms(night, hotel, type) {
   document.getElementById("result").innerHTML = html;
 }
 
-// 留言整個區塊摺疊展開
+
 function toggleMessage() {
   var b = document.getElementById("messageBlock");
   if (!b) return;
@@ -2256,8 +2316,16 @@ document.getElementById("name").addEventListener("keydown", function(e) {
   if (e.key === "Enter") search();
 });
 
-// 進入頁面就載入進度公告
-loadProgress();
+
+try {
+  google.script.url.getLocation(function (loc) {
+    var k = String((loc && loc.parameter && loc.parameter.k) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (k.length >= 5) search(k.slice(0, 5));
+    else loadProgress();
+  });
+} catch (e) {
+  loadProgress();
+}
 
 </script>
 
